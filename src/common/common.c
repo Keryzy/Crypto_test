@@ -6,36 +6,24 @@
 
 /**
  * 16진수 문자열을 바이트 배열로 변환
+ * @param hex_string 16진수 문자열
+ * @param bytes 출력 바이트 배열
+ * @param max_len 최대 바이트 길이
+ * @param bytes_converted 변환된 바이트 수를 저장할 포인터 (NULL 가능)
+ * @return 성공 시 SUCCESS, 실패 시 오류 코드
  */
-int hex_to_bytes(const char* hex_string, uint8_t* bytes, size_t max_len) {
+int hex_to_bytes_ex(const char* hex_string, uint8_t* bytes, size_t max_len, size_t* bytes_converted) {
     if (hex_string == NULL) {
-        printf("ERROR: Null hex string\n");
-        return -3; // 널 포인터 처리
+        return ERR_INVALID_INPUT;
     }
     
-    printf("DEBUG: hex_to_bytes called with hex_string length=%zu, max_len=%zu\n", 
-           strlen(hex_string), max_len);
-    
-    // 문자열에 유효하지 않은 문자가 있는지 먼저 확인
+    // 문자열에 유효하지 않은 문자가 있는지 확인
     for (size_t i = 0; i < strlen(hex_string); i++) {
         char ch = hex_string[i];
         if (!((ch >= '0' && ch <= '9') || 
               (ch >= 'a' && ch <= 'f') || 
               (ch >= 'A' && ch <= 'F'))) {
-            printf("ERROR: Invalid hex character at position %zu: '%c' (ASCII: %d)\n", 
-                   i, isprint(ch) ? ch : '.', (unsigned char)ch);
-            
-            // 앞뒤 컨텍스트 출력
-            size_t start = (i > 10) ? i - 10 : 0;
-            size_t end = (i + 10 < strlen(hex_string)) ? i + 10 : strlen(hex_string);
-            printf("Context: \"");
-            for (size_t j = start; j < end; j++) {
-                char c = hex_string[j];
-                printf("%c", isprint(c) ? c : '.');
-            }
-            printf("\"\n");
-            
-            return -1;
+            return ERR_INVALID_FORMAT;
         }
     }
     
@@ -44,25 +32,20 @@ int hex_to_bytes(const char* hex_string, uint8_t* bytes, size_t max_len) {
     
     // 홀수 길이 처리
     if (hex_len % 2 != 0) {
-        printf("WARNING: Odd length hex string (%zu), padding with leading zero\n", hex_len);
-        // 새 버퍼에 원본 데이터 복사하되 앞에 0 추가
         char* padded_hex = (char*)malloc(hex_len + 2);
         if (!padded_hex) {
-            printf("ERROR: Memory allocation failed\n");
-            return -4;
+            return ERR_MEMORY_ALLOC;
         }
         padded_hex[0] = '0';
         strcpy(padded_hex + 1, hex_string);
         
-        // 새 버퍼로 재귀 호출
-        int result = hex_to_bytes(padded_hex, bytes, max_len);
+        int result = hex_to_bytes_ex(padded_hex, bytes, max_len, bytes_converted);
         free(padded_hex);
         return result;
     }
     
     if (byte_len > max_len) {
-        printf("ERROR: Converted byte length (%zu) exceeds max_len (%zu)\n", byte_len, max_len);
-        return -2; // 버퍼 오버플로우 방지
+        return ERR_INVALID_INPUT;
     }
     
     // 2자리 16진수씩 처리
@@ -85,8 +68,24 @@ int hex_to_bytes(const char* hex_string, uint8_t* bytes, size_t max_len) {
         bytes[i] = (high_val << 4) | low_val;
     }
     
-    printf("DEBUG: hex_to_bytes successfully converted %zu bytes\n", byte_len);
-    return byte_len;
+    // 변환된 바이트 수 반환
+    if (bytes_converted != NULL) {
+        *bytes_converted = byte_len;
+    }
+    
+    return SUCCESS;
+}
+
+// 기존 함수는 호환성을 위해 유지하되, 새 함수를 호출하도록 수정
+int hex_to_bytes(const char* hex_string, uint8_t* bytes, size_t max_len) {
+    size_t bytes_converted = 0;
+    int result = hex_to_bytes_ex(hex_string, bytes, max_len, &bytes_converted);
+    
+    if (result != SUCCESS) {
+        return result; // 오류 코드 반환
+    }
+    
+    return (int)bytes_converted; // 성공 시 변환된 바이트 수 반환
 }
 
 /**
@@ -178,12 +177,12 @@ int create_directory(const char* path) {
 
 /**
  * 파일에서 MD 값만 추출하여 배열에 저장
- * @return 추출된 MD 값의 개수
+ * @return 추출된 MD 값의 개수, 오류 시 정의된 오류 코드
  */
 int extract_md_values(const char* filename, char md_values[][MAX_LINE_LENGTH], int max_values) {
     FILE* file = fopen(filename, "r");
     if (file == NULL) {
-        return -1;
+        return ERR_FILE_OPEN;
     }
     
     int count = 0;
@@ -209,25 +208,23 @@ int extract_md_values(const char* filename, char md_values[][MAX_LINE_LENGTH], i
     }
     
     fclose(file);
-    return count;
+    return count; // 성공 시 추출된 MD 값 개수 반환
 }
 
 /**
  * 두 파일의 MD 값만 비교
- * @return 일치하면 0, 불일치하면 1, 오류 발생 시 -1
+ * @return 일치하면 0, 불일치하면 불일치 개수, 오류 발생 시 정의된 오류 코드
  */
 int compare_test_results(const char* output_file, const char* expected_file) {
     FILE* out_file = fopen(output_file, "r");
     if (out_file == NULL) {
-        printf("출력 파일을 열 수 없습니다: %s\n", output_file);
-        return -1;
+        return ERR_FILE_OPEN;
     }
     
     FILE* exp_file = fopen(expected_file, "r");
     if (exp_file == NULL) {
-        printf("정답 파일을 열 수 없습니다: %s\n", expected_file);
         fclose(out_file);
-        return -1;
+        return ERR_FILE_OPEN;
     }
     
     char out_line[MAX_LINE_LENGTH];
@@ -261,7 +258,6 @@ int compare_test_results(const char* output_file, const char* expected_file) {
             }
             
             if (!found_md) {
-                printf("정답 파일에서 MD 값을 더 이상 찾을 수 없습니다.\n");
                 mismatch_count++;
                 break;
             }
@@ -270,9 +266,6 @@ int compare_test_results(const char* output_file, const char* expected_file) {
             
             // MD 값 비교
             if (strcmp(out_line, exp_line) != 0) {
-                printf("MD 값 불일치 (테스트 #%d):\n", md_count);
-                printf("  계산값: %s\n", out_line);
-                printf("  정답값: %s\n", exp_line);
                 mismatch_count++;
             }
         }
@@ -291,17 +284,11 @@ int compare_test_results(const char* output_file, const char* expected_file) {
     fclose(out_file);
     fclose(exp_file);
     
-    if (more_md) {
-        printf("정답 파일에 MD 값이 더 많습니다.\n");
-    }
-    
     if (md_count == 0) {
-        printf("MD 값을 찾을 수 없습니다.\n");
-        return -1;
+        return ERR_INVALID_FORMAT; // MD 값을 찾을 수 없음
     }
     
-    printf("총 %d개의 MD 값 비교 완료, 불일치: %d개\n", md_count, mismatch_count);
-    return mismatch_count;
+    return mismatch_count; // 성공 시 불일치 개수 반환 (0이면 완전 일치)
 }
 
 const char* get_filename_from_path(const char* path) {
@@ -310,4 +297,20 @@ const char* get_filename_from_path(const char* path) {
         filename = strrchr(path, '/');
     }
     return filename ? filename + 1 : path;
+}
+
+// replace_extension 함수 구현 추가
+char* replace_extension(const char* filename, const char* old_ext, const char* new_ext) {
+    static char result[MAX_PATH_LENGTH];
+    
+    strcpy(result, filename);
+    size_t filename_len = strlen(filename);
+    size_t old_ext_len = strlen(old_ext);
+    
+    if (filename_len > old_ext_len && 
+        strcmp(filename + filename_len - old_ext_len, old_ext) == 0) {
+        strcpy(result + filename_len - old_ext_len, new_ext);
+    }
+    
+    return result;
 }

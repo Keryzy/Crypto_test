@@ -10,14 +10,14 @@
 int sha256_hash(const uint8_t* message, size_t message_len, uint8_t* digest) {
     EVP_MD_CTX* ctx = EVP_MD_CTX_new();
     if (ctx == NULL) {
-        return ERR_SHA256_INIT_FAILED;
+        return ERR_SHA256_INIT;
     }
     
     int ret = SUCCESS;
     
     // 초기화
     if (EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) {
-        ret = ERR_SHA256_INIT_FAILED;
+        ret = ERR_SHA256_INIT;
         goto cleanup;
     }
     
@@ -30,7 +30,7 @@ int sha256_hash(const uint8_t* message, size_t message_len, uint8_t* digest) {
                       (message_len - processed) : CHUNK_SIZE;
         
         if (EVP_DigestUpdate(ctx, message + processed, chunk) != 1) {
-            ret = ERR_SHA256_UPDATE_FAILED;
+            ret = ERR_SHA256_UPDATE;
             goto cleanup;
         }
         
@@ -40,13 +40,13 @@ int sha256_hash(const uint8_t* message, size_t message_len, uint8_t* digest) {
     // 해시 값 계산
     unsigned int digest_len = 0;
     if (EVP_DigestFinal_ex(ctx, digest, &digest_len) != 1) {
-        ret = ERR_SHA256_FINAL_FAILED;
+        ret = ERR_SHA256_FINAL;
         goto cleanup;
     }
     
     // 다이제스트 길이 검증 (SHA-256은 항상 32바이트)
     if (digest_len != SHA256_DIGEST_LENGTH) {
-        ret = ERR_SHA256_HASH_FAILED;
+        ret = ERR_SHA256_HASH;
     }
     
 cleanup:
@@ -93,20 +93,17 @@ TestType sha256_detect_test_type(const char* filename) {
 int sha256_test(const char* input_file, const char* output_file) {
     FILE* fp = fopen(input_file, "r");
     if (!fp) {
-        print_error(ERR_FILE_OPEN_FAILED);
-        return ERR_FILE_OPEN_FAILED;
+        print_error(ERR_FILE_OPEN);
+        return ERR_FILE_OPEN;
     }
 
     FILE* out_fp = fopen(output_file, "w");
     if (!out_fp) {
         fclose(fp);
-        print_error(ERR_FILE_CREATE_FAILED);
-        return ERR_FILE_CREATE_FAILED;
+        print_error(ERR_FILE_CREATE);
+        return ERR_FILE_CREATE;
     }
 
-    // 디버깅을 위해 버퍼 비활성화
-    setvbuf(stdout, NULL, _IONBF, 0);
-    
     char line[MAX_LINE_LENGTH];
     uint8_t* message = NULL;  // 동적 메시지 버퍼
     uint8_t digest[SHA256_DIGEST_LENGTH];
@@ -126,13 +123,11 @@ int sha256_test(const char* input_file, const char* output_file) {
             int len_bits = 0;
             
             if (sscanf(line, "Len = %d", &len_bits) != 1 || len_bits < 0) {
-                printf("ERROR: Invalid Len format: %s\n", line);
                 if (!fgets(line, sizeof(line), fp)) break;
                 continue;
             }
             
             message_len = (size_t)((len_bits + 7) / 8);  // 비트를 바이트로 변환
-            printf("DEBUG: Processing Len = %d bits (%zu bytes)\n", len_bits, message_len);
             
             // 메시지 버퍼 할당 (이전 버퍼 해제 후)
             if (message != NULL) {
@@ -140,7 +135,6 @@ int sha256_test(const char* input_file, const char* output_file) {
             }
             message = (uint8_t*)malloc(message_len + 16);  // 여유있게 할당
             if (message == NULL) {
-                printf("ERROR: Cannot allocate memory for message (%zu bytes)\n", message_len);
                 if (!fgets(line, sizeof(line), fp)) break;
                 continue;
             }
@@ -164,13 +158,7 @@ int sha256_test(const char* input_file, const char* output_file) {
                 if (msg_hex) {
                     msg_hex++;  // = 다음으로 이동
                     while(*msg_hex == ' ') msg_hex++;  // 공백 건너뛰기
-                    
-                    // MD= 부분이 붙어있는지 확인하고 제거
-                    char* md_marker = strstr(msg_hex, "MD =");
-                    if (md_marker) {
-                        *md_marker = '\0';  // MD= 부분을 제거
-                        printf("DEBUG: Found and removed 'MD =' marker from message\n");
-                    }
+
                     
                     // 개행 문자 제거
                     char* newline = strchr(msg_hex, '\n');
@@ -184,12 +172,11 @@ int sha256_test(const char* input_file, const char* output_file) {
                     // 동적으로 충분히 큰 버퍼 할당
                     msg_buffer = (char*)malloc(expected_hex_len + 100);
                     if (!msg_buffer) {
-                        printf("ERROR: Memory allocation failed for hex buffer (%zu bytes)\n", expected_hex_len + 100);
                         free(message);
                         message = NULL;
                         fclose(fp);
                         fclose(out_fp);
-                        return ERR_MEMORY_ALLOCATION_FAILED;
+                        return ERR_MEMORY_ALLOC;
                     }
                     msg_buffer[0] = '\0';  // 빈 문자열로 초기화
                     
@@ -226,7 +213,6 @@ int sha256_test(const char* input_file, const char* output_file) {
                                 size_t new_size = current_hex_len + strlen(ptr) + 200;
                                 char* new_buffer = (char*)realloc(msg_buffer, new_size);
                                 if (!new_buffer) {
-                                    printf("ERROR: Cannot expand hex buffer\n");
                                     break;
                                 }
                                 msg_buffer = new_buffer;
@@ -236,13 +222,7 @@ int sha256_test(const char* input_file, const char* output_file) {
                             strcat(msg_buffer, ptr);
                             current_hex_len = strlen(msg_buffer);
                         }
-                        
-                        printf("DEBUG: Read additional line, current hex length: %zu/%zu\n", 
-                               current_hex_len, expected_hex_len);
                     }
-                    
-                    printf("DEBUG: Final hex message length: %zu characters (expected: %zu)\n", 
-                           strlen(msg_buffer), expected_hex_len);
                     
                     // Len=0 특수 케이스 (입력이 실제로 비어있을 때만)
                     if (len_bits == 0 && (msg_buffer[0] == '\0' || strcmp(msg_buffer, "00") == 0)) {
@@ -250,29 +230,28 @@ int sha256_test(const char* input_file, const char* output_file) {
                         message_len = 0;
                     } else {
                         int bytes_converted = hex_to_bytes(msg_buffer, message, message_len);
-                        printf("DEBUG: Converted %d bytes from hex (expected: %zu)\n", 
-                               bytes_converted, message_len);
                         
                         if (bytes_converted < 0) {
-                            printf("오류: 16진수 변환 실패 (%d)\n", bytes_converted);
+                            print_error(bytes_converted);
+                            free(message);
+                            free(msg_buffer);
+                            fclose(fp);
+                            fclose(out_fp);
+                            return bytes_converted;
                         } else if ((size_t)bytes_converted != message_len) {
-                            printf("경고: 예상 길이(%zu)와 변환된 바이트 수(%d)가 일치하지 않음\n", 
-                                   message_len, bytes_converted);
+                            // 경고만 출력하고 계속 진행
                         }
                     }
                     
                     // SHA-256 해시 계산
-                    printf("DEBUG: Calculating SHA-256 hash for %zu bytes...\n", message_len);
                     int hash_result = sha256_hash(message, message_len, digest);
-                    printf("DEBUG: SHA-256 hash calculation result: %d\n", hash_result);
                     
                     if (hash_result != 0) {
-                        printf("ERROR: SHA-256 hashing failed with code %d\n", hash_result);
                         free(message);
                         free(msg_buffer);
                         fclose(fp);
                         fclose(out_fp);
-                        return ERR_SHA256_HASH_FAILED;
+                        return ERR_SHA256_HASH;
                     }
                     
                     // MD 값 출력
@@ -282,12 +261,7 @@ int sha256_test(const char* input_file, const char* output_file) {
                     }
                     fprintf(out_fp, "\n\n");
                     
-                    // 결과가 제대로 출력되었는지 확인
-                    fflush(out_fp);
-                    printf("DEBUG: Written MD value to output file\n");
-                    
                     test_count++;
-                    printf("DEBUG: Completed test vector #%d\n", test_count);
                 }
             }
         } else {
@@ -296,8 +270,6 @@ int sha256_test(const char* input_file, const char* output_file) {
         }
     }
 
-    printf("Processed %d test vectors\n", test_count);
-    
     // 동적 메모리 해제
     if (msg_buffer) {
         free(msg_buffer);
@@ -317,15 +289,15 @@ int sha256_test(const char* input_file, const char* output_file) {
 int sha256_monte(const char* input_file, const char* output_file) {
     FILE* fp = fopen(input_file, "r");
     if (!fp) {
-        print_error(ERR_FILE_OPEN_FAILED);
-        return ERR_FILE_OPEN_FAILED;
+        print_error(ERR_FILE_OPEN);
+        return ERR_FILE_OPEN;
     }
 
     FILE* out_fp = fopen(output_file, "w");
     if (!out_fp) {
         fclose(fp);
-        print_error(ERR_FILE_CREATE_FAILED);
-        return ERR_FILE_CREATE_FAILED;
+        print_error(ERR_FILE_CREATE);
+        return ERR_FILE_CREATE;
     }
 
     char line[MAX_LINE_LENGTH];
@@ -381,7 +353,7 @@ int sha256_monte(const char* input_file, const char* output_file) {
             if (sha256_hash(message, SHA256_DIGEST_LENGTH * 3, MD[i]) != 0) {
                 fclose(fp);
                 fclose(out_fp);
-                return ERR_SHA256_HASH_FAILED;
+                return ERR_SHA256_HASH;
             }
         }
         
@@ -399,7 +371,6 @@ int sha256_monte(const char* input_file, const char* output_file) {
 
     fclose(fp);
     fclose(out_fp);
-    printf("몬테 카를로 테스트 완료: 100개의 체크포인트 생성됨\n");
     return SUCCESS;
 }
 

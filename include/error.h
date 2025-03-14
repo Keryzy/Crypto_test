@@ -6,24 +6,41 @@
 // 성공 코드
 #define SUCCESS 0
 
-// 기본 에러 코드
-#define ERR_FILE_OPEN           100
-#define ERR_FILE_READ           101
-#define ERR_FILE_WRITE          102
-#define ERR_FILE_NOT_FOUND      103
-#define ERR_INVALID_FORMAT      104
-#define ERR_CRYPTO_OPERATION    105
-#define ERR_INVALID_INPUT       106
-#define ERR_TEST_FAILED         107
-#define ERR_FILE_OPEN_FAILED    108
-#define ERR_FILE_CREATE_FAILED  109
-#define ERR_MEMORY_ALLOCATION_FAILED 110
+// 시스템 관련 에러 코드 (100번대)
+#define ERR_SYSTEM_DIR          100
+#define ERR_SYSTEM_PERMISSION   101
+#define ERR_SYSTEM_CONSOLE      102
+#define ERR_SYSTEM_MEMORY       103
 
-// OpenSSL SHA-256 관련 에러 코드
-#define ERR_SHA256_INIT_FAILED      301
-#define ERR_SHA256_UPDATE_FAILED    302
-#define ERR_SHA256_FINAL_FAILED     303
-#define ERR_SHA256_HASH_FAILED      304
+// 파일 관련 에러 코드 (110번대)
+#define ERR_FILE_OPEN           110    // 파일 열기 실패
+#define ERR_FILE_READ           111    // 파일 읽기 실패
+#define ERR_FILE_WRITE          112    // 파일 쓰기 실패
+#define ERR_FILE_NOT_FOUND      113    // 파일을 찾을 수 없음
+#define ERR_FILE_CREATE         114    // 파일 생성 실패
+
+// 입력/형식 관련 에러 코드 (120번대)
+#define ERR_INVALID_FORMAT      120    // 잘못된 형식
+#define ERR_INVALID_INPUT       121    // 유효하지 않은 입력
+#define ERR_MEMORY_ALLOC        122    // 메모리 할당 실패
+
+// HEX 변환 관련 에러 코드 (130번대)
+#define ERR_HEX_INVALID_CHAR    130    // 유효하지 않은 16진수 문자
+#define ERR_HEX_BUFFER_OVERFLOW 131    // 16진수 버퍼 초과
+#define ERR_HEX_NULL_INPUT      132    // NULL 입력 오류
+
+// 암호화 관련 에러 코드 (140번대)
+#define ERR_CRYPTO_OPERATION    140    // 암호화 연산 실패
+#define ERR_CRYPTO_INIT         141    // 암호화 초기화 실패
+
+// SHA-256 관련 에러 코드 (150번대)
+#define ERR_SHA256_INIT         150    // SHA-256 초기화 실패
+#define ERR_SHA256_UPDATE       151    // SHA-256 업데이트 실패
+#define ERR_SHA256_FINAL        152    // SHA-256 최종 연산 실패
+#define ERR_SHA256_HASH         153    // SHA-256 해시 실패
+
+// 테스트 관련 에러 코드 (160번대)
+#define ERR_TEST_FAILED         160    // 테스트 실패
 
 // 에러 메시지 함수
 void print_error(int error_code);

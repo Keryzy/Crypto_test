@@ -20,6 +20,13 @@
 #define MIN(a,b) ((a) < (b) ? (a) : (b))
 #define MAX_PATH_LENGTH 1024
 
+// 입력 관련 상수
+#define MAX_TEXT_INPUT 1024
+#define MAX_FILE_PATH 256
+
+// 해시 처리 관련 상수
+#define HASH_CHUNK_SIZE 65536  // 64KB 청크 크기
+
 // 유틸리티 함수
 int hex_to_bytes(const char* hex_str, unsigned char* bytes, size_t max_len);
 void bytes_to_hex(const unsigned char* bytes, size_t len, char* hex_str, size_t hex_len);
@@ -30,5 +37,8 @@ int create_directory(const char* path);
 int compare_test_results(const char* output_file, const char* expected_file);
 const char* get_filename_from_path(const char* path);
 int extract_md_values(const char* filename, char md_values[][MAX_LINE_LENGTH], int max_values);
+
+// 파일 확장자 변경 함수 추가
+char* replace_extension(const char* filename, const char* old_ext, const char* new_ext);
 
 #endif // COMMON_H
