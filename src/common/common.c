@@ -1,8 +1,10 @@
-#include "../../include/common.h"
+#include "../include/common/common.h"
+#include "../include/common/error.h"
 #include <direct.h> // Windows _mkdir 함수용
 #include <string.h>
 #include <sys/stat.h>
 #include <ctype.h>
+#include <errno.h>
 
 /**
  * 16진수 문자열을 바이트 배열로 변환
@@ -91,16 +93,10 @@ int hex_to_bytes(const char* hex_string, uint8_t* bytes, size_t max_len) {
 /**
  * 바이트 배열을 16진수 문자열로 변환
  */
-void bytes_to_hex(const unsigned char* bytes, size_t len, char* hex_str, size_t hex_len) {
-    if (bytes == NULL || hex_str == NULL || hex_len < len * 2 + 1) {
-        return;
-    }
-    
+void bytes_to_hex(const unsigned char* bytes, size_t len, char* hex_string) {
     for (size_t i = 0; i < len; i++) {
-        sprintf(hex_str + (i * 2), "%02x", bytes[i]);
+        sprintf(hex_string + (i * 2), "%02x", bytes[i]);
     }
-    
-    hex_str[len * 2] = '\0';
 }
 
 /**
@@ -119,7 +115,9 @@ bool file_exists(const char* filename) {
  * 디렉토리 생성 (경로에 여러 단계가 포함된 경우도 처리)
  */
 int create_directory(const char* path) {
-    char tmp[MAX_FILENAME_LENGTH];
+    if (!path) return ERR_INVALID_INPUT;
+    
+    char tmp[MAX_PATH_LENGTH]; // MAX_FILENAME_LENGTH를 MAX_PATH_LENGTH로 변경
     char* p = NULL;
     size_t len;
     
@@ -300,7 +298,7 @@ const char* get_filename_from_path(const char* path) {
 }
 
 // replace_extension 함수 구현 추가
-char* replace_extension(const char* filename, const char* old_ext, const char* new_ext) {
+const char* replace_extension(const char* filename, const char* old_ext, const char* new_ext) {
     static char result[MAX_PATH_LENGTH];
     
     strcpy(result, filename);

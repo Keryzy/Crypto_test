@@ -1,0 +1,12 @@
+#  CAVS 11.0
+#  CMACGen information
+#  Algorithms tested:Alg = AES KeySize = 128 Mode = Generate  
+#  Generated on Tue Mar 15 08:40:32 2011
+
+
+Count = 0
+Klen = 16 
+Mlen = 0
+Tlen = 4
+Key = e4b7645b2f7d63b4674cd01970c9d1ec
+Msg = 00

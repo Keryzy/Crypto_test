@@ -41,6 +41,14 @@
 
 // 테스트 관련 에러 코드 (160번대)
 #define ERR_TEST_FAILED         160    // 테스트 실패
+#define ERR_INVALID_TEST_TYPE   161    // 유효하지 않은 테스트 유형
+#define ERR_INVALID_INPUT_TYPE  162    // 유효하지 않은 입력 유형
+
+// 알고리즘 관련 에러 코드 (170번대)
+#define ERR_INVALID_ALGORITHM   170    // 유효하지 않은 알고리즘
+#define ERR_UNKNOWN_ALGORITHM_TYPE 171 // 알 수 없는 알고리즘 유형
+#define ERR_MAX_ALGORITHMS      172    // 최대 알고리즘 수 초과
+#define ERR_NOT_IMPLEMENTED     173    // 구현되지 않은 기능
 
 // 에러 메시지 함수
 void print_error(int error_code);

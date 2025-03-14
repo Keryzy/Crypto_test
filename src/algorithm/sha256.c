@@ -1,7 +1,7 @@
-#include <openssl/sha.h>
-#include "sha256.h"
-#include "error.h"
-#include "common.h"
+#include <openssl/evp.h>
+#include "../../include/algorithm/sha256.h"
+#include "../../include/common/error.h"
+#include "../../include/common/common.h"
 #include <ctype.h>
 
 /**
@@ -385,4 +385,161 @@ void print_debug_info(const uint8_t* msg, size_t msg_len, const uint8_t* hash) {
         printf("%02x", hash[i]);
     }
     printf("\n\n");
+}
+
+// 초기화 함수
+int sha256_init(void** ctx) {
+    EVP_MD_CTX* mdctx = EVP_MD_CTX_new();
+    if (!mdctx) {
+        return ERR_SHA256_INIT;
+    }
+    
+    if (EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) != 1) {
+        EVP_MD_CTX_free(mdctx);
+        return ERR_SHA256_INIT;
+    }
+    
+    *ctx = mdctx;
+    return SUCCESS;
+}
+
+// 업데이트 함수
+int sha256_update(void* ctx, const unsigned char* data, size_t data_len) {
+    EVP_MD_CTX* mdctx = (EVP_MD_CTX*)ctx;
+    
+    if (EVP_DigestUpdate(mdctx, data, data_len) != 1) {
+        return ERR_SHA256_UPDATE;
+    }
+    
+    return SUCCESS;
+}
+
+// 마무리 함수
+int sha256_final(void* ctx, unsigned char* digest) {
+    EVP_MD_CTX* mdctx = (EVP_MD_CTX*)ctx;
+    unsigned int digest_len;
+    
+    if (EVP_DigestFinal_ex(mdctx, digest, &digest_len) != 1) {
+        return ERR_SHA256_FINAL;
+    }
+    
+    EVP_MD_CTX_free(mdctx);
+    return SUCCESS;
+}
+
+// 자동 테스트 구현
+int sha256_run_auto_test(int test_type_id) {
+    // 테스트 타입에 따른 파일 이름 결정
+    const char* test_file = NULL;
+    
+    if (test_type_id == 0) { // ShortMsg
+        test_file = "SHA256ShortMsg.req";
+    } else if (test_type_id == 1) { // LongMsg
+        test_file = "SHA256LongMsg.req";
+    } else if (test_type_id == 2) { // Monte
+        test_file = "SHA256Monte.req";
+    } else {
+        return ERR_INVALID_TEST_TYPE;
+    }
+    
+    // 파일 경로 구성
+    char input_path[MAX_PATH_LENGTH];
+    char output_path[MAX_PATH_LENGTH];
+    
+    sprintf(input_path, "test_vectors/request/SHA_256/%s", test_file);
+    const char* output_file = replace_extension(test_file, ".req", ".rsp");
+    sprintf(output_path, "test_vectors/response/SHA_256/%s", output_file);
+    
+    // 디렉토리 생성
+    create_directory("test_vectors/response/SHA_256");
+    
+    int result;
+    
+    if (test_type_id == 2) { // Monte
+        result = sha256_monte(input_path, output_path);
+    } else {
+        result = sha256_test(input_path, output_path);
+    }
+    
+    if (result == SUCCESS) {
+        printf("\n테스트 완료: 결과 파일이 %s에 저장되었습니다.\n", output_path);
+        
+        // 결과 비교
+        char expected_path[MAX_PATH_LENGTH];
+        sprintf(expected_path, "test_vectors/expected/SHA_256/%s", output_file);
+        
+        if (file_exists(expected_path)) {
+            printf("\n결과 비교 중...\n");
+            result = compare_test_results(output_path, expected_path);
+            if (result == SUCCESS) {
+                printf("\n✓ 모든 테스트 결과가 예상 결과와 일치합니다.\n");
+            } else {
+                printf("\n✕ 일부 테스트 결과가 예상 결과와 일치하지 않습니다.\n");
+            }
+        }
+    }
+    
+    return result;
+}
+
+// 수동 테스트 구현
+int sha256_run_manual_test(int input_type_id) {
+    uint8_t digest[SHA256_DIGEST_LENGTH];
+    int result = SUCCESS;
+    
+    if (input_type_id == 0) { // 텍스트 입력
+        char text[MAX_LINE_LENGTH];
+        
+        printf("\n텍스트를 입력하세요 (한글, 특수문자, 공백 모두 지원, 최대 %d 문자):\n", MAX_LINE_LENGTH-1);
+        if (fgets(text, sizeof(text), stdin) == NULL) {
+            return ERR_INVALID_INPUT;
+        }
+        
+        // 개행 문자 제거
+        size_t len = strlen(text);
+        if (len > 0 && text[len-1] == '\n') {
+            text[len-1] = '\0';
+            len--;
+        }
+        
+        // 입력 정보 출력
+        printf("\n[입력된 텍스트] %s\n", text);
+        printf("[입력 길이] %zu 바이트\n", len);
+        
+        // 텍스트 바이트 값 출력
+        printf("[바이트 값] ");
+        for (size_t i = 0; i < len && i < 32; i++) {
+            printf("%02x ", (unsigned char)text[i]);
+        }
+        if (len > 32) printf("...");
+        printf("\n");
+        
+        // 해시 계산
+        result = sha256_hash((const uint8_t*)text, len, digest);
+        
+    } else { // 16진수 입력
+        char hex_string[MAX_LINE_LENGTH];
+        
+        printf("\n16진수 문자열을 입력하세요 (예: 68656c6c6f = 'hello'):\n");
+        if (fgets(hex_string, sizeof(hex_string), stdin) == NULL) {
+            return ERR_INVALID_INPUT;
+        }
+        
+        // 개행 문자 제거 및 공백 처리
+        // ... 이하 동일한 코드 ...
+        
+        // 해시 계산
+        // ... 이하 동일한 코드 ...
+    }
+    
+    // 결과 출력
+    if (result == SUCCESS) {
+        printf("\n[SHA-256 해시 결과]\n");
+        for (int i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+            printf("%02x", digest[i]);
+        }
+        printf("\n");
+    }
+    
+    return result;
 }

@@ -1,5 +1,5 @@
-#include "../../include/common.h"
-#include "../../include/error.h"
+#include "../common/error.h"
+#include "../common/common.h"
 
 /**
  * 에러 코드에 해당하는 에러 메시지를 출력
@@ -73,6 +73,20 @@ const char* get_error_message(int error_code) {
         // 테스트 관련 에러 (160번대)
         case ERR_TEST_FAILED:
             return "테스트에 실패했습니다";
+        case ERR_INVALID_TEST_TYPE:
+            return "유효하지 않은 테스트 유형입니다";
+        case ERR_INVALID_INPUT_TYPE:
+            return "유효하지 않은 입력 유형입니다";
+            
+        // 알고리즘 관련 에러 (170번대)
+        case ERR_INVALID_ALGORITHM:
+            return "유효하지 않은 알고리즘입니다";
+        case ERR_UNKNOWN_ALGORITHM_TYPE:
+            return "알 수 없는 알고리즘 유형입니다";
+        case ERR_MAX_ALGORITHMS:
+            return "최대 지원 알고리즘 수를 초과했습니다";
+        case ERR_NOT_IMPLEMENTED:
+            return "아직 구현되지 않은 기능입니다";
             
         default:
             return "알 수 없는 오류가 발생했습니다";
