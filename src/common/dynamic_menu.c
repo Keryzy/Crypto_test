@@ -2,7 +2,7 @@
 #include "../../include/common/algorithm_registry.h"
 #include "../../include/common/common.h"
 #include "../../include/common/error.h"
-#include "../../include/algorithm/sha256.h"  // SHA-256 함수 선언 직접 포함
+#include "../../include/algorithm/sha256.h"
 #include <stdio.h>
 #include <string.h>
 
